@@ -123,16 +123,20 @@ class Harvester:
 
         return yaml.dump(kubeconfig)
 
-    def create_vms(self, blueprint, dry_run=False):
-        if self.config["kubernetes"]["rke2_provisioned_install"]:
-            node_command = self.rancher.get_rke2_node_command(
-                self.config["cluster"]["name"]
-            )
+    def create_vms(self, blueprint):
+        if "rke2_provisioned_install" in self.config["kubernetes"]:
+            if self.config["kubernetes"]["rke2_provisioned_install"]:
+                node_command = self.rancher.get_rke2_node_command(
+                    self.config["cluster"]["name"]
+                )
+            else:
+                node_command = ""
+
+            if self.config["kubernetes"]["install_harvester_csi"]:
+                csi_cloudconfig = self.create_csi_cloudconfig(blueprint)
         else:
             node_command = ""
-
-        if self.config["kubernetes"]["install_harvester_csi"]:
-            csi_cloudconfig = self.create_csi_cloudconfig(blueprint)
+            csi_cloudconfig = ""
 
         for vm in blueprint["machines"]["vms"]:
             disks = []
@@ -160,8 +164,9 @@ class Harvester:
             )
 
             role = ""
-            for r in vm["role"]:
-                role = f"{role} --{r}".strip()
+            if "role" in vm:
+                for r in vm["role"]:
+                    role = f"{role} --{r}".strip()
 
             template = Template("user-data")
             cloudinit_user_data = template.parse(
@@ -186,13 +191,17 @@ class Harvester:
                 cloudinit_network_data=cloudinit_network_data,
             )
 
-            if dry_run:
-                print(f"--- {vm['name']}")
-                print(yaml.dump(cloudinit_secret))
-                print(yaml.dump(vm_manifest))
-                print("---")
-            else:
-                self.kubernetes.create(
-                    cloudinit_secret, blueprint["machines"]["namespace"]
-                )
-                self.kubernetes.create(vm_manifest, blueprint["machines"]["namespace"])
+            if "cluster" not in blueprint:
+                # create namespace if vm only provisioning
+                self.kubernetes.create_namespace(blueprint["machines"]["namespace"])
+
+            result = self.kubernetes.create(
+                cloudinit_secret, blueprint["machines"]["namespace"]
+            )
+            if result:
+                print(result)
+            result = self.kubernetes.create(
+                vm_manifest, blueprint["machines"]["namespace"]
+            )
+            if result:
+                print(result)

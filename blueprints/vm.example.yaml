@@ -1,0 +1,32 @@
+harvester:
+  cluster_name: harvester
+network:
+  gateway: 192.168.0.1
+  name: "harvester-public/vlan-1000"
+machines:
+  namespace: test
+  template_image_name_gpu: "sles15-sp7-nvidia.x86_64-15.7.0.qcow2"
+  template_image_name: "sles15-sp7.x86_64-15.7.0.qcow2"
+  vms:
+    - name: test-vm-1
+      ip: 192.168.0.100
+      cpu: 2
+      memory: 8
+      reserved_memory: 1
+      disk_size: 50
+      type: gpu
+      harvester_node: harvester-node
+      pcidevices:
+        - nvme_storage_1
+        - nvme_storage_2
+      extra_disks:
+        - storageclass: harvester-longhorn-v2
+          disk_size: 25
+        - storageclass: harvester-longhorn-v1
+          disk_size: 30
+    - name: test-vm-2
+      ip: 192.168.0.101
+      cpu: 2
+      memory: 8
+      reserved_memory: 1
+      disk_size: 50

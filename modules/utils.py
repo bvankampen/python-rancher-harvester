@@ -44,7 +44,14 @@ def load_config(config_directory):
 
 
 def load_blueprint(name):
-    blueprint_file = f"./blueprints/{name}.yaml"
+    if name.endswith(".yaml"):
+        blueprint_file = f"./blueprints/{name}"
+    else:
+        blueprint_file = f"./blueprints/{name}.yaml"
+
+    if not os.path.exists(blueprint_file):
+        print(f"{blueprint_file} not found")
+        return None
     return load_file(blueprint_file)
 
 

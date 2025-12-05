@@ -19,7 +19,6 @@ kubernetes:
   rke2_token: token
   enable_vault_secret: false
 harvester:
-  cloud_provider: false
   cloud_provider_config: "/var/lib/rancher/rke2/etc/config-files/cloud-provider-config"
 machines:
   ssh_user: rancher
