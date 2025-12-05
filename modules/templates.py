@@ -1,5 +1,4 @@
 import jinja2
-import yaml
 from .filters import to_yaml, to_json, b64encode
 
 
