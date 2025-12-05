@@ -1,0 +1,82 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: {{ vm.name }}
+  namespace: {{ blueprint.machines.namespace }}
+  annotations:
+{% if vm.reserved_memory | default(0) > 0 %}
+    harvesterhci.io/reservedMemory: "{{ vm.reserved_memory | default(0) }}Gi"
+{% endif %}
+    harvesterhci.io/vmRunStrategy: RerunOnFailure
+    harvesterhci.io/volumeClaimTemplates: |-
+      {{ disks | to_json() }}
+    network.harvesterhci.io/ips: '[]'
+  labels:
+    harvesterhci.io/creator: harvester
+    harvesterhci.io/os: linux
+spec:
+  runStrategy: RerunOnFailure
+  template:
+    metadata:
+      annotations:
+        harvesterhci.io/sshNames: '[]'
+      labels:
+        harvesterhci.io/vmName: {{ vm.name }}
+    spec:
+      domain:
+        cpu:
+          cores: {{ vm.cpu }}
+          sockets: 1
+          threads: 1
+          model: host-passthrough
+        memory:
+          guest: "{{ vm.memory - vm.reserved_memory | default(0) }}Gi"
+        devices:
+          disks:
+{% for disk in disks %}
+            - name: disk-{{ loop.index-1 }}
+              disk:
+                bus: virtio
+              bootOrder: {{ loop.index }}
+{% endfor %}
+            - name: cloudinitdisk
+              disk:
+                bus: virtio
+          interfaces:
+            - name: default
+              model: virtio
+              bridge: {}
+          {% if pcidevices | default("")-%}
+          hostDevices:
+            {{ pcidevices | to_yaml | indent(12) }}
+          {% endif +%}
+        machine:
+          type: q35
+        resources:
+          requests:
+            cpu: "125m"
+            memory: "{{ vm.memory - vm.reserved_memory | default(0) }}Gi"
+          limits:
+            cpu: {{ vm.cpu }}
+            memory: "{{ vm.memory }}Gi"
+      networks:
+        - multus:
+            networkName: {{ blueprint.network.name }}
+          name: default
+{% if vm.harvester_node | default('') != '' %}
+      nodeSelector:
+        kubernetes.io/hostname: {{ vm.harvester_node }}
+{% endif %}
+      evictionStrategy: LiveMigrateIfPossible
+      volumes:
+{% for disk in disks %}      
+      - name: disk-{{ loop.index-1 }}
+        persistentVolumeClaim:
+          claimName: "{{ vm.name }}-disk-{{ loop.index-1 }}"
+{% endfor %}
+      - cloudInitNoCloud:
+          networkDataSecretRef:
+            name: {{ vm.name }}
+          secretRef:
+            name: {{ vm.name }}
+        name: cloudinitdisk

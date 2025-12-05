@@ -1,0 +1,15 @@
+network:
+  version: 1
+  config:
+  - type: physical
+    name: {{ blueprint.network.primary_interface | default("eth0") }}
+    subnets:
+      - type: static
+        address: {{ vm.ip }}
+        gateway: {{ blueprint.network.gateway }}
+        netmask: {{ blueprint.network.netmask | default("255.255.255.0")}}
+  - type: nameserver
+    address:
+    {% for d in blueprint.network.dns_servers %}
+    - {{ d }}
+    {% endfor %}

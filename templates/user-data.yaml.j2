@@ -1,0 +1,48 @@
+#cloud-config
+users:
+  - name: {{ blueprint.machines.ssh_user }}
+    ssh_authorized_keys:
+      {{ blueprint.machines.ssh_authorized_keys | default({}) }}
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    passwd: {{ blueprint.machines.hashed_password | default('') }}
+    lock_passwd: false
+hostname: {{ vm.name }}
+write_files:
+{%- if blueprint.kubernetes.install_harvester_csi %}
+  - encoding: b64
+    content: {{ csi_cloudconfig | b64encode }}
+    owner: root:root
+    path: /var/lib/rancher/rke2/etc/config-files/cloud-provider-config
+    permissions: '0644'
+{%- endif %}
+{%- if blueprint.kubernetes.rke2_provisioned_install | default(false) %}
+  - owner: root:root
+    path: /root/rke2_install.sh
+    permissions: '0755'
+    content: |
+      #!/bin/sh
+      sleep 30
+      {{ node_command }} --node-name {{vm.name }} --internal-address {{ vm.ip }} {{ role }}
+{%- endif %}
+  - owner: root:root
+    path: /root/.bashrc
+    permissions: '644'
+    content: |
+      if [[ -d /var/lib/rancher/rke2/bin ]]; then
+        export PATH=$PATH:/var/lib/rancher/rke2/bin
+        export KUBECONFIG=/etc/rancher/rke2/rke2.yaml
+        export CONTAINER_RUNTIME_ENDPOINT=unix:///run/k3s/containerd/containerd.sock
+        export CONTAINERD_ADDRESS=/run/k3s/containerd/containerd.sock
+        export CONTAINERD_NAMESPACE=k8s.io
+        source <(kubectl completion bash)
+        alias k=kubectl
+        complete -o default -F __start_kubectl k
+      fi
+runcmd:
+  - echo "Run Commands"
+{%- if blueprint.kubernetes.rke2_provisioned_install | default(false) %}
+  - /root/rke2_install.sh
+{%- endif %}
+{%- if blueprint.machines.enable_fabricmanager | default(false) %}
+  - systemctl enable --now nvidia-fabricmanager.service
+{%- endif %}

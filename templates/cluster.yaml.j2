@@ -1,0 +1,91 @@
+apiVersion: provisioning.cattle.io/v1
+kind: Cluster
+metadata:
+{%- if blueprint.cluster.labels is defined %}
+  labels:
+    {{ blueprint.cluster.labels | to_yaml | indent(4) }} 
+{%- else %}
+  labels: {}
+{%- endif %}
+  annotations: {}
+  name: {{ blueprint.cluster.name }}
+  namespace: fleet-default
+spec:
+{%- if blueprint.kubernetes.cis_profile | default("") == "cis" %}
+  defaultPodSecurityAdmissionConfigurationTemplateName: rancher-restricted
+{%- endif %}
+  kubernetesVersion: {{ blueprint.kubernetes.version }}
+  enableNetworkPolicy: true
+  rkeConfig:
+{%- if blueprint.kubernetes.ingress_loadbalancer | default(true) %}
+    additionalManifest: |-
+{%- endif %}
+{%- if blueprint.kubernetes.ingress_loadbalancer | default(true) %}
+      apiVersion: helm.cattle.io/v1
+      kind: HelmChartConfig
+      metadata:
+        name: rke2-ingress-nginx
+        namespace: kube-system
+      spec:
+        valuesContent: |-
+          controller:
+            config:
+              proxy-body-size: 128M
+            publishService:
+              enabled: true
+            service:
+              enabled: true
+            annotations:
+              cloudprovider.harvesterhci.io/ipam: pool
+{%- endif %}
+    chartValues:
+{%- if blueprint.kubernetes.install_harvester_csi | default(false) %}
+      harvester-cloud-provider:
+        global:
+          cattle:
+            clusterName: "{{ blueprint.cluster.name }}"
+        cloudConfigPath: "{{ blueprint.harvester.cloud_provider_config }}"
+{%- endif %}
+    registries:
+{%- if blueprint.registries is defined %}
+        mirrors:
+          {{ blueprint.registries.mirrors | to_yaml | indent(10) }}
+{%- else %}
+        mirrors: {}
+{%- endif %}
+    machineGlobalConfig:
+      cluster-cidr: "{{ blueprint.kubernetes.cluster_cidr | default("10.42.0.0/16") }}"
+      service-cidr: "{{ blueprint.kubernetes.service_cidr | default("10.43.0.0/16") }}"
+      cni: {{ blueprint.kubernetes.cni  }}
+{%- if blueprint.kubernetes.cis_profile is defined %}     
+      profile: {{ blueprint.kubernetes.cis_profile }}
+{%- endif %}
+{%- if blueprint.kubernetes.selinux %}
+      selinux: true
+{%- endif %}
+    machineSelectorConfig:
+      - config:
+{%- if blueprint.kubernetes.cis_profile | default("") != "" %}
+          protect-kernel-defaults: true
+{%- else %}
+          protect-kernel-defaults: false
+{%- endif %}
+{%- if blueprint.kubernetes.install_harvester_csi | default(false) %}
+          cloud-provider-name: harvester
+{%- endif %}
+{%- if blueprint.kubernetes.enable_vault_secret | default(false) %}
+    machineSelectorFiles:
+      - fileSources:
+          - secret:
+              items:
+                - key: secret-id
+                  path: /var/lib/rancher/rke2/server/manifests/vault-secret-id.yaml
+              name: vault-approle-secret-id
+{%- endif %}
+    upgradeStrategy:
+      controlPlaneDrainOptions:
+        enabled: false
+      workerDrainOptions:
+        enabled: false
+      workerConcurrency: "10%"
+      controlPlaneConcurrency: "10%"

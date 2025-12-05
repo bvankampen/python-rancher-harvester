@@ -1,0 +1,55 @@
+cluster:
+  name: cluster-example
+  labels:
+    custom-label: "value"
+harvester:
+  cluster_name: harvester
+kubernetes:
+  rke2_provisioned_install: true
+  ingress_loadbalancer: true
+network:
+  gateway: 192.168.0.1
+  name: "harvester-public/vlan-1000"
+machines:
+  namespace: cluster-example
+  template_image_name_gpu: "sles15-sp7-nvidia.x86_64-15.7.0.qcow2"
+  template_image_name: "sles15-sp7.x86_64-15.7.0.qcow2"
+  vms:
+    - name: cluster-example-cp-1
+      ip: 192.168.0.80
+      role: ["controlplane", "etcd"]
+      cpu: 2
+      memory: 8
+      reserved_memory: 1
+      disk_size: 50
+    - name: cluster-example-worker-1
+      ip: 192.168.0.83
+      role: ["worker"]
+      cpu: 2
+      memory: 8
+      reserved_memory: 1
+      disk_size: 50
+      type: gpu
+      harvester_node: harvester-node
+      pcidevices:
+        - nvme_storage_1
+        - nvme_storage_2
+    - name: cluster-example-worker-2
+      ip: 192.168.0.84
+      role: ["worker"]
+      cpu: 2
+      memory: 8
+      reserved_memory: 1
+      disk_size: 50
+    - name: cluster-example-worker-3
+      ip: 192.168.0.85
+      role: ["worker"]
+      cpu: 2
+      memory: 8
+      reserved_memory: 1
+      disk_size: 50
+      extra_disks:
+        - storageclass: harvester-longhorn-v2
+          disk_size: 25
+        - storageclass: harvester-longhorn-v1
+          disk_size: 30

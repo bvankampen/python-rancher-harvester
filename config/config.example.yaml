@@ -1,0 +1,42 @@
+rancher:
+  hostname: rancher.example.com
+  cluster_name: local
+  insecure_node_command: true
+network:
+  primary_interface: eth0
+  netmask: 255.255.255.0
+  gateway: 192.168.0.1
+  domain_name: example.com
+  dns_servers:
+    - 192.168.0.1
+  ntp_servers:
+    - ntp.example.com
+  node_fqdn: example.com
+kubernetes:
+  version: v1.33.5+rke2r1
+  cni: multus,calico
+  install_harvester_csi: true
+  rke2_token: token
+  enable_vault_secret: false
+harvester:
+  cloud_provider: false
+  cloud_provider_config: "/var/lib/rancher/rke2/etc/config-files/cloud-provider-config"
+machines:
+  ssh_user: rancher
+  ssh_authorized_keys:
+    - ssh-rsa <redacted>
+  hashed_password: <redacted>
+  hashed_password_root: <redacted>
+  pcidevices:
+    nvidia_rtx_4060_ti:
+      address:
+        - "0000:65:00.0"
+    nvidia_rtx_4060_ti_audio:
+      address:
+        - "0000:65:00.1"
+    nvme_storage_1:
+      address:
+        - "0000:17:00.0"
+    nvme_storage_2:
+      address:
+        - "0000:18:00.0"

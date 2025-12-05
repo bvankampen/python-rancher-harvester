@@ -10,3 +10,9 @@ Create Python modules for provisioning VMs with options currently not supported 
 
 ### Resources
 - https://hackweek.opensuse.org/25/projects/python-modules-for-harvester-vm-provisioning-and-rancher-rke2-provisioning
+
+
+### Deployment
+- install python requirements in `requirements.txt`
+- `export PRH_API_TOKEN=<rancher-api-token>`
+- Run `python3 provision.py`
