@@ -50,14 +50,12 @@ class Rancher:
                             return
             sleep(1)
 
-    def create_cluster(self, blueprint, dry_run=False):
+    def create_cluster(self, blueprint):
         kubeconfig = self.get_kubeconfig(self.config["rancher"]["cluster_name"])
         template = Template("cluster")
         cluster_manifest = template.parse(blueprint=merge_dict(self.config, blueprint))
         kubernetes = Kubernetes(kubeconfig)
-        if dry_run:
-            print(yaml.dump(cluster_manifest))
-            print("---")
-            return None
-        else:
-            return kubernetes.create(cluster_manifest, "fleet-default")
+
+        result = kubernetes.create(cluster_manifest, "fleet-default")
+        self.wait_for_cluster(blueprint)
+        return result
