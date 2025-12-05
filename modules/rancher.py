@@ -46,13 +46,8 @@ class Rancher:
             if cluster is not None:
                 for condition in cluster["status"]["conditions"]:
                     if condition["type"] == "Ready":
-                        # print(
-                        #     f"Cluster {blueprint['cluster']['name']} Ready state: {condition['reason']}"
-                        # )
                         if condition["reason"] == "Waiting":
                             return
-            # else:
-            #     print(f"Cluster {blueprint['cluster']['name']} not found")
             sleep(1)
 
     def create_cluster(self, blueprint, dry_run=False):

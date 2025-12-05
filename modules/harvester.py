@@ -188,9 +188,9 @@ class Harvester:
 
             if dry_run:
                 print(f"--- {vm['name']}")
-                # print(yaml.dump(cloudinit_secret))
-                # print(yaml.dump(vm_manifest))
-                # print("---")
+                print(yaml.dump(cloudinit_secret))
+                print(yaml.dump(vm_manifest))
+                print("---")
             else:
                 self.kubernetes.create(
                     cloudinit_secret, blueprint["machines"]["namespace"]
