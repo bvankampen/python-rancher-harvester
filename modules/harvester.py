@@ -4,6 +4,9 @@ from .utils import merge_dict, b64decode
 from .templates import Template
 
 import yaml
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Harvester:
@@ -82,6 +85,9 @@ class Harvester:
         service_account_name = self.config["cluster"]["name"]
         cluster_name = self.config["cluster"]["name"]
         namespace = self.config["machines"]["namespace"]
+
+        logging.info(f"Create CSI Cloudconfig for {cluster_name}")
+
         self.kubernetes.create_namespace(namespace)
         self.kubernetes.create_service_account(namespace, service_account_name)
         self.kubernetes.create_namespaced_cluster_role_binding(
@@ -139,6 +145,7 @@ class Harvester:
             csi_cloudconfig = ""
 
         for vm in blueprint["machines"]["vms"]:
+            logger.info(f"Create VM {vm['name']}")
             disks = []
             pcidevices = []
             if "pcidevices" in vm:

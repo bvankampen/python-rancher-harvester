@@ -5,8 +5,45 @@ from modules.rancher import Rancher
 from modules.harvester import Harvester
 
 import argparse
+import logging
 
-DRY_RUN = False
+logger = logging.getLogger(__name__)
+
+
+def provision(config, blueprint):
+    if "cluster" in blueprint:
+        rancher = Rancher(config)
+        rancher.create_cluster(blueprint)
+
+    harvester = Harvester(config, blueprint)
+    harvester.create_vms(blueprint)
+
+
+def set_logging(config, log_level, log_filename):
+    if log_level == "":
+        if "logging" in config:
+            if "level" in config["logging"]:
+                log_level = config["logging"]["level"]
+            else:
+                log_level = "error"
+        else:
+            log_level = "error"
+    if log_filename == "":
+        if "logging" in config:
+            if "filename" in config["logging"]:
+                log_filename = config["logging"]["filename"]
+            else:
+                log_filename = ""
+        else:
+            log_filename = ""
+
+    logging.basicConfig(
+        filename=log_filename,
+        level=logging.getLevelName(log_level.upper()),
+        format="%(asctime)s - %(levelname)s - %(message)s",
+    )
+
+    logger.info(f"Loglevel set to {log_level.upper()}")
 
 
 def main():
@@ -16,21 +53,18 @@ def main():
     )
 
     parser.add_argument("blueprint", help="name of the blueprint")
+    parser.add_argument("--loglevel", help="loglevel", default="")
+    parser.add_argument("--logfile", help="logfile name", default="")
 
     args = parser.parse_args()
 
     config = load_config("./config")
     blueprint = load_blueprint(args.blueprint)
 
-    if blueprint is None:
-        return
+    set_logging(config, args.loglevel, args.logfile)
 
-    if "cluster" in blueprint:
-        rancher = Rancher(config)
-        rancher.create_cluster(blueprint)
-
-    harvester = Harvester(config, blueprint)
-    harvester.create_vms(blueprint)
+    if blueprint is not None:
+        provision(config, blueprint)
 
 
 if __name__ == "__main__":

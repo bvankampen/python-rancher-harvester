@@ -1,6 +1,8 @@
 import requests
+import logging
 
 requests.packages.urllib3.disable_warnings()
+logger = logging.getLogger(__name__)
 
 
 class Api:
