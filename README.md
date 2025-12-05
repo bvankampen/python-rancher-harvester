@@ -6,7 +6,7 @@
 - Run `python3 provision.py <blueprint>`
 
 ## Todo
-- [ ] Logging and error handling
+- [x] Logging and error handling
 - [ ] Automatic scheduling on VM based on free PCIE resources
 - [ ] Deleting and cleanup of VMs, clusters and resources
 - [ ] Ansible Module

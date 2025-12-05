@@ -1,5 +1,8 @@
 import jinja2
 from .filters import to_yaml, to_json, b64encode
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Template:

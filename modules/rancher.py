@@ -5,6 +5,9 @@ from .utils import merge_dict
 from time import sleep
 
 import yaml
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Rancher:
@@ -27,6 +30,7 @@ class Rancher:
     def get_rke2_node_command(self, cluster_name):
         cluster_id = self.get_cluster_id(cluster_name)
         data = self.api.get(f"/v3/clusters/{cluster_id}/clusterregistrationtokens")
+        logging.debug(f"Node command: {data['data'][0]['nodeCommand']}")
         return data["data"][0]["nodeCommand"]
 
     def get_cluster(self, cluster_name):
@@ -46,11 +50,15 @@ class Rancher:
             if cluster is not None:
                 for condition in cluster["status"]["conditions"]:
                     if condition["type"] == "Ready":
-                        if condition["reason"] == "Waiting":
+                        if condition["status"] == "True":
                             return
+                        else:
+                            if condition["reason"] == "Waiting":
+                                return
             sleep(1)
 
     def create_cluster(self, blueprint):
+        logging.info(f"Create cluster {blueprint['cluster']['name']}")
         kubeconfig = self.get_kubeconfig(self.config["rancher"]["cluster_name"])
         template = Template("cluster")
         cluster_manifest = template.parse(blueprint=merge_dict(self.config, blueprint))

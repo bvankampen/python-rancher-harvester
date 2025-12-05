@@ -4,6 +4,11 @@ import yaml
 import os
 import base64
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 ENVIRONMENTAL_VARIABLE_PREFIX = "PRH_"
 
 
@@ -50,7 +55,7 @@ def load_blueprint(name):
         blueprint_file = f"./blueprints/{name}.yaml"
 
     if not os.path.exists(blueprint_file):
-        print(f"{blueprint_file} not found")
+        logger.error(f"{blueprint_file} not found")
         return None
     return load_file(blueprint_file)
 
@@ -67,6 +72,8 @@ def print_api_error(e):
     response = json.loads(e.body)
     if response["reason"] != "AlreadyExists":
         print(str(e))
+    else:
+        logging.warning(response["message"])
 
 
 def b64encode(data):
