@@ -17,7 +17,6 @@ kubernetes:
   cni: multus,calico
   install_harvester_csi: true
   rke2_token: token
-  enable_vault_secret: false
 harvester:
   cloud_provider_config: "/var/lib/rancher/rke2/etc/config-files/cloud-provider-config"
 machines:

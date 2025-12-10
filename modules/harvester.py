@@ -129,7 +129,12 @@ class Harvester:
 
         return yaml.dump(kubeconfig)
 
-    def create_vms(self, blueprint):
+    def create_vms(self, blueprint, updatevm=False, updatevm_names=""):
+        if updatevm_names != "":
+            updatevm_names = updatevm_names.split(",")
+        else:
+            updatevm_names = []
+
         if "rke2_provisioned_install" in self.config["kubernetes"]:
             if self.config["kubernetes"]["rke2_provisioned_install"]:
                 node_command = self.rancher.get_rke2_node_command(
@@ -207,8 +212,24 @@ class Harvester:
             )
             if result:
                 print(result)
-            result = self.kubernetes.create(
-                vm_manifest, blueprint["machines"]["namespace"]
+
+            vminfo = self.kubernetes.get(
+                "kubevirt.io",
+                "v1",
+                "virtualmachines",
+                vm["name"],
+                namespace=blueprint["machines"]["namespace"],
             )
-            if result:
-                print(result)
+
+            if vminfo is None or updatevm:
+                if (updatevm and vm["name"] in updatevm_names) or (
+                    updatevm and updatevm_names == []
+                ):
+                    logging.warning(f"Updating {vm['name']}")
+                    result = self.kubernetes.create(
+                        vm_manifest, blueprint["machines"]["namespace"]
+                    )
+                    if result:
+                        print(result)
+            else:
+                logger.warning(f"VM {vm['name']} already exists")
