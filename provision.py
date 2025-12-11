@@ -11,9 +11,10 @@ logger = logging.getLogger(__name__)
 
 
 def provision(config, blueprint, args):
-    if "cluster" in blueprint:
-        rancher = Rancher(config)
-        rancher.create_cluster(blueprint)
+    if not args.noupdatecluster:
+        if "cluster" in blueprint:
+            rancher = Rancher(config)
+            rancher.create_cluster(blueprint)
 
     harvester = Harvester(config, blueprint)
     harvester.create_vms(blueprint, args.updatevm, args.vms)
@@ -55,6 +56,9 @@ def main():
     parser.add_argument("blueprint", help="name of the blueprint")
     parser.add_argument(
         "--updatevm", help="update vm even if they exists", action="store_true"
+    )
+    parser.add_argument(
+        "--noupdatecluster", help="don't update cluster", action="store_true"
     )
     parser.add_argument(
         "--vms",

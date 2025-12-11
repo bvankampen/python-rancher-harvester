@@ -207,12 +207,6 @@ class Harvester:
                 # create namespace if vm only provisioning
                 self.kubernetes.create_namespace(blueprint["machines"]["namespace"])
 
-            result = self.kubernetes.create(
-                cloudinit_secret, blueprint["machines"]["namespace"]
-            )
-            if result:
-                print(result)
-
             vminfo = self.kubernetes.get(
                 "kubevirt.io",
                 "v1",
@@ -221,15 +215,21 @@ class Harvester:
                 namespace=blueprint["machines"]["namespace"],
             )
 
-            if vminfo is None or updatevm:
-                if (updatevm and vm["name"] in updatevm_names) or (
-                    updatevm and updatevm_names == []
-                ):
-                    logging.warning(f"Updating {vm['name']}")
-                    result = self.kubernetes.create(
-                        vm_manifest, blueprint["machines"]["namespace"]
-                    )
-                    if result:
-                        print(result)
+            if (
+                vminfo is None
+                or (updatevm and vm["name"] in updatevm_names)
+                or (updatevm and updatevm_names == [])
+            ):
+                logging.warning(f"Updating {vm['name']}")
+                result = self.kubernetes.create(
+                    cloudinit_secret, blueprint["machines"]["namespace"]
+                )
+                if result:
+                    print(result)
+                result = self.kubernetes.create(
+                    vm_manifest, blueprint["machines"]["namespace"]
+                )
+                if result:
+                    print(result)
             else:
                 logger.warning(f"VM {vm['name']} already exists")
