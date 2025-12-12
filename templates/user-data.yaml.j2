@@ -38,6 +38,21 @@ write_files:
         alias k=kubectl
         complete -o default -F __start_kubectl k
       fi
+{%- if vm.mounts | default([]) | length > 0 %}
+disk_setup:
+{%- for mount in vm.mounts %}
+  {{ mount.disk }}:
+    table_type: gpt
+    layout: true
+    overwrite: true
+{%- endfor %}
+fs_setup:
+{%- for mount in vm.mounts %}
+  - filesystem: {{ mount.filesystem | default('xfs') }}
+    device: {{ mount.disk }}
+    overwrite: true
+{%- endfor %}
+{%- endif %}
 runcmd:
   - echo "Run Commands"
 {%- if blueprint.kubernetes.rke2_provisioned_install | default(false) %}
@@ -45,4 +60,15 @@ runcmd:
 {%- endif %}
 {%- if blueprint.machines.enable_fabricmanager | default(false) %}
   - systemctl enable --now nvidia-fabricmanager.service
+{%- endif %}
+{%- if vm.mounts | default([]) | length > 0 %}
+{%- for mount in vm.mounts %}
+  - mkdir {{ mount.path }}
+{%- endfor %}
+{%- endif %}
+{%- if vm.mounts | default([]) | length > 0 %}
+mounts:
+{%- for mount in vm.mounts %}
+  - [ "{{ mount.disk }}","{{ mount.path }}","{{ mount.filesystem | default ('xfs')}}","defaults","0","0" ]
+{%- endfor %}
 {%- endif %}

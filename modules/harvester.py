@@ -188,6 +188,7 @@ class Harvester:
                 node_command=node_command,
                 role=role,
             )
+            # print(cloudinit_user_data)
 
             template = Template("network-data")
             cloudinit_network_data = template.parse(
