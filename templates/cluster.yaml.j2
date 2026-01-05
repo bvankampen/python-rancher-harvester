@@ -47,7 +47,13 @@ spec:
         cloudConfigPath: "{{ blueprint.harvester.cloud_provider_config }}"
 {%- endif %}
     registries:
-{%- if blueprint.registries is defined %}
+{%- if blueprint.registries.configs is defined %}
+        configs:
+          {{ blueprint.registries.configs | to_yaml | indent(10) }}
+{%- else %}
+        configs: {}
+{%- endif %}
+{%- if blueprint.registries.mirrors is defined %}
         mirrors:
           {{ blueprint.registries.mirrors | to_yaml | indent(10) }}
 {%- else %}

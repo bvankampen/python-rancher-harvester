@@ -20,6 +20,12 @@ def provision(config, blueprint, args):
     harvester.create_vms(blueprint, args.updatevm, args.vms)
 
 
+def parse_cluster(config, blueprint, args):
+    rancher = Rancher(config)
+    cluster = rancher.parse_cluster(blueprint)
+    print(cluster)
+
+
 def set_logging(config, log_level, log_filename):
     if log_level == "":
         if "logging" in config:
@@ -61,6 +67,11 @@ def main():
         "--noupdatecluster", help="don't update cluster", action="store_true"
     )
     parser.add_argument(
+        "--parsecluster",
+        help="only parse cluster and print output",
+        action="store_true",
+    )
+    parser.add_argument(
         "--vms",
         help="VM names (comma seperated) in case updatevm is used, if empty all vms are updated",
         default="",
@@ -76,7 +87,10 @@ def main():
     set_logging(config, args.loglevel, args.logfile)
 
     if blueprint is not None:
-        provision(config, blueprint, args)
+        if args.parsecluster:
+            parse_cluster(config, blueprint, args)
+        else:
+            provision(config, blueprint, args)
 
 
 if __name__ == "__main__":
