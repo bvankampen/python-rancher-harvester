@@ -1,0 +1,8 @@
+resource_definitions:
+  gpu:
+    - "nvidia.com/AD106_GEFORCE_RTX_4060_TI"
+  gpu-hda:
+    - "nvidia.com/AD106M_HIGH_DEFINITION_AUDIO_CONTROLLER"
+  nvme:
+    - "kingston.com/NV3_NVME_SSD_E27T_DRAMLESS"
+    - "kingston.com/NV3_NVME_SSD_TC2201_DRAMLESS"
