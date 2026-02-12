@@ -12,8 +12,10 @@ network:
   ntp_servers:
     - ntp.example.com
   node_fqdn: example.com
+  bridge_interface: mgmt-br
+  clusternetwork: mgmt
 kubernetes:
-  version: v1.33.5+rke2r1
+  version: v1.34.3+rke2r1
   cni: multus,calico
   install_harvester_csi: true
   rke2_token: token

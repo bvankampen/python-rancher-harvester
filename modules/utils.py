@@ -3,6 +3,7 @@ import json
 import yaml
 import os
 import base64
+import collections
 
 import logging
 
@@ -60,12 +61,16 @@ def load_blueprint(name):
     return load_file(blueprint_file)
 
 
-def merge_dict(dict_1, dict_2):
+def merge_dict(dict_1, dict_2) -> dict:
     dict_3 = {**dict_1, **dict_2}
     for key, value in dict_3.items():
         if key in dict_1 and key in dict_2:
             dict_3[key] = dict_1[key] | value
     return dict_3
+
+
+def ordered_dict(dict_1):
+    return collections.OrderedDict(sorted(dict_1.items()))
 
 
 def print_api_error(e):
@@ -82,3 +87,38 @@ def b64encode(data):
 
 def b64decode(data):
     return base64.b64decode(data.encode("utf-8")).decode("utf-8")
+
+def print_json(data):
+    data = ordered_dict(data)
+    print(json.dumps(data, indent=4))
+
+def print_resources(all_data):
+    all_data = ordered_dict(all_data)
+    # print_json(all_data)
+
+    print(f"{'NODE': <10}{'RESOURCE': <10}{'AVAILABLE': >10}{'USED': >10}{'FREE': >10}")
+    for name, data in all_data["nodes"].items():
+        print(f"{name: <10}")
+        for field, line in data["resources"].items():
+            print(f"{'': <10}{field: <10}{line['available']: >10}{line['used']: >10}{line['free']: >10}")
+    print("TOTALS")
+    for field, line in all_data["totals"].items():
+        print(f"{'': <10}{field: <10}{line['available']: >10}{line['used']: >10}{line['free']: >10}")
+
+def get_value(data, key):
+    if key in data:
+        return data[key]
+    else:
+        return None
+
+
+def format_k8s_value(field, value):
+    if field == "memory":
+        if str(value).endswith("Gi"):
+            value = int(value[:-2])
+        if str(value).endswith("Ki"):
+            value = int(int(value[:-2]) / 1024 / 1024)
+    if field == "cpu":
+        if str(value).endswith("m"):
+            value = int(int(value[:-1]) / 1024)
+    return int(value)

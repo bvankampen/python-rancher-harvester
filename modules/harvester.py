@@ -2,8 +2,11 @@ from .kubernetes import Kubernetes
 from .rancher import Rancher
 from .utils import merge_dict, b64decode
 from .templates import Template
+from .resources import Resources
 
 import yaml
+from ipaddress import IPv4Network
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -16,9 +19,10 @@ class Harvester:
         self.kubernetes = Kubernetes(
             self.rancher.get_kubeconfig(self.config["harvester"]["cluster_name"])
         )
+        self.resources = Resources(self.config, self.kubernetes)
 
-    def find_pcidevice_by_address(self, address):
-        for device in self.all_node_pcidevices["items"]:
+    def find_pcidevice_by_address(self, all_node_pcidevices, address):
+        for device in all_node_pcidevices["items"]:
             if "address" in device["status"]:
                 if device["status"]["address"] == address:
                     return {
@@ -29,7 +33,7 @@ class Harvester:
 
     def get_pcidevices(self, harvester_node, wanted_pcidevices):
         pcidevices = []
-        self.all_node_pcidevices = self.kubernetes.list(
+        all_node_pcidevices = self.kubernetes.list_cluster(
             "devices.harvesterhci.io",
             "v1beta1",
             "pcidevices",
@@ -41,13 +45,15 @@ class Harvester:
                     for address in self.config["machines"]["pcidevices"][
                         wanted_pcidevice
                     ]["address"]:
-                        pcidevice = self.find_pcidevice_by_address(address)
+                        pcidevice = self.find_pcidevice_by_address(all_node_pcidevices, address)
                         if pcidevice is not None:
                             pcidevices.append(pcidevice)
         return pcidevices
 
+
+
     def get_os_disk(self, vm, image_name):
-        image = self.kubernetes.list(
+        image = self.kubernetes.list_cluster(
             "harvesterhci.io",
             "v1beta1",
             "virtualmachineimages",
@@ -81,7 +87,7 @@ class Harvester:
             },
         }
 
-    def create_csi_cloudconfig(self, blueprint):
+    def create_csi_cloudconfig(self):
         service_account_name = self.config["cluster"]["name"]
         cluster_name = self.config["cluster"]["name"]
         namespace = self.config["machines"]["namespace"]
@@ -129,27 +135,24 @@ class Harvester:
 
         return yaml.dump(kubeconfig)
 
-    def create_vms(self, blueprint, updatevm=False, updatevm_names=""):
+    def create_vms(self, updatevm=False, updatevm_names=""):
         if updatevm_names != "":
             updatevm_names = updatevm_names.split(",")
         else:
             updatevm_names = []
+
+        node_command = ""
+        csi_cloudconfig = ""
 
         if "rke2_provisioned_install" in self.config["kubernetes"]:
             if self.config["kubernetes"]["rke2_provisioned_install"]:
                 node_command = self.rancher.get_rke2_node_command(
                     self.config["cluster"]["name"]
                 )
-            else:
-                node_command = ""
-
             if self.config["kubernetes"]["install_harvester_csi"]:
-                csi_cloudconfig = self.create_csi_cloudconfig(blueprint)
-        else:
-            node_command = ""
-            csi_cloudconfig = ""
+                csi_cloudconfig = self.create_csi_cloudconfig()
 
-        for vm in blueprint["machines"]["vms"]:
+        for vm in self.config["machines"]["vms"]:
             logger.info(f"Create VM {vm['name']}")
             disks = []
             pcidevices = []
@@ -188,7 +191,6 @@ class Harvester:
                 node_command=node_command,
                 role=role,
             )
-            # print(cloudinit_user_data)
 
             template = Template("network-data")
             cloudinit_network_data = template.parse(
@@ -204,16 +206,16 @@ class Harvester:
                 cloudinit_network_data=cloudinit_network_data,
             )
 
-            if "cluster" not in blueprint:
+            if "cluster" not in self.config:
                 # create namespace if vm only provisioning
-                self.kubernetes.create_namespace(blueprint["machines"]["namespace"])
+                self.kubernetes.create_namespace(self.config["machines"]["namespace"])
 
             vminfo = self.kubernetes.get(
                 "kubevirt.io",
                 "v1",
                 "virtualmachines",
                 vm["name"],
-                namespace=blueprint["machines"]["namespace"],
+                namespace=self.config["machines"]["namespace"],
             )
 
             if (
@@ -223,14 +225,77 @@ class Harvester:
             ):
                 logging.warning(f"Updating {vm['name']}")
                 result = self.kubernetes.create(
-                    cloudinit_secret, blueprint["machines"]["namespace"]
+                    cloudinit_secret, self.config["machines"]["namespace"]
                 )
                 if result:
                     print(result)
                 result = self.kubernetes.create(
-                    vm_manifest, blueprint["machines"]["namespace"]
+                    vm_manifest, self.config["machines"]["namespace"]
                 )
                 if result:
                     print(result)
             else:
                 logger.warning(f"VM {vm['name']} already exists")
+
+    def get_resources(self):
+        return self.resources.get()
+
+    def create_vm_network(self):
+        if "vlan_id" not in self.config["network"]:
+            logger.warning("No vlan_id configured, vlan won't be provisioned")
+            return
+        namespace = self.config["network"]["name"].split("/")[0]
+        name = self.config["network"]["name"].split("/")[1]
+        network = self.kubernetes.get(
+            "k8s.cni.cncf.io",
+            "v1",
+            "network-attachment-definitions",
+            name,
+            namespace=namespace)
+        cidr = str(IPv4Network(
+            f"{self.config['network']['gateway']}/{self.config['network']['netmask']}", False))
+        if network is None:
+            template = Template("network-attachment-definition")
+            network_attachment_definition_manifest = template.parse(
+                blueprint = self.config,
+                name = name,
+                namespace = namespace,
+                cidr = cidr
+            )
+            logger.info(f"Create network {name} in namespace {namespace}")
+            result = self.kubernetes.create(network_attachment_definition_manifest, namespace)
+            if result:
+                print(result)
+        else:
+            logger.warning(f"Network {name} in namespace {namespace} already exists")
+
+    def create_ip_pool(self):
+        if "ip_pool" not in self.config["network"]:
+            logger.warning(f"No IP Pool configured")
+            return
+        name = f"{self.config['cluster']['name']}-ip-pool"
+        cidr = str(IPv4Network(
+            f"{self.config['network']['gateway']}/{self.config['network']['netmask']}", False))
+        ip_pool = self.kubernetes.get(
+            "loadbalancer.harvesterhci.io",
+            "v1beta1",
+            "ippools",
+            name)
+        if ip_pool is None:
+            template = Template("ip-pool")
+            ip_pool_manifest = template.parse(
+                blueprint = self.config,
+                name = name,
+                cidr = cidr
+            )
+            logger.info(f"Create IP Pool {name}")
+            result = self.kubernetes.create(ip_pool_manifest)
+            if result:
+                print(result)
+        else:
+            logger.warning(f"IP Pool {name} already exists")
+
+    def provision(self, args):
+        self.create_vm_network()
+        self.create_ip_pool()
+        self.create_vms(args.updatevm, args.vms)

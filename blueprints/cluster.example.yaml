@@ -10,6 +10,10 @@ kubernetes:
 network:
   gateway: 192.168.0.1
   name: "harvester-public/vlan-1000"
+  vlan_id: 1001
+  ip_pool:
+    start: 192.168.97.110
+    end: 192.168.97.119
 machines:
   namespace: cluster-example
   template_image_name_gpu: "sles15-sp7-nvidia.x86_64-15.7.0.qcow2"

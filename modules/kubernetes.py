@@ -13,7 +13,7 @@ class Kubernetes:
         )
         self.api_client = client.ApiClient(configuration=configuration)
 
-    def create(self, manifest, namespace):
+    def create(self, manifest, namespace=None):
         if not isinstance(manifest, dict):
             manifest = yaml.safe_load(manifest)
         try:
@@ -28,13 +28,23 @@ class Kubernetes:
             return str(e)
         return None
 
+    def list_cluster(self, group, version, plural, label_selector=""):
+        api = client.CustomObjectsApi(self.api_client)
+        return api.list_cluster_custom_object(
+            group=group,
+            version=version,
+            plural=plural,
+            label_selector=label_selector,
+        )
+
+
     def list(self, group, version, plural, label_selector="", namespace=None):
         api = client.CustomObjectsApi(self.api_client)
         if namespace is None:
-            return api.list_cluster_custom_object(
+            return api.list_custom_object_for_all_namespaces(
                 group=group,
                 version=version,
-                plural=plural,
+                resource_plural=plural,
                 label_selector=label_selector,
             )
         else:
@@ -46,30 +56,82 @@ class Kubernetes:
                 label_selector=label_selector,
             )
 
-    def get(self, group, version, plural, name, label_selector="", namespace=None):
-        api = client.CustomObjectsApi(self.api_client)
-        if namespace is None:
-            try:
-                return api.get_cluster_custom_object(
-                    group=group,
-                    version=version,
-                    plural=plural,
-                    name=name,
+    def list_node(self):
+        api = client.CoreV1Api(self.api_client)
+        try:
+            return api.list_node()
+        except ApiException as e:
+            print_api_error(e)
+
+    def list_pod(self, namespace="", field_selector="", label_selector=""):
+        api = client.CoreV1Api(self.api_client)
+        try:
+            if namespace == "":
+                return api.list_pod_for_all_namespaces(
+                    field_selector=field_selector, label_selector=label_selector
+                )
+            else:
+                return api.list_namespaced_pod(
+                    namespace=namespace,
+                    field_selector=field_selector,
                     label_selector=label_selector,
                 )
-            except ApiException:
+        except ApiException as e:
+            print_api_error(e)
+
+    def list_all_pods(self, node = None):
+        api = client.CoreV1Api(self.api_client)
+        try:
+            if node is None:
+                return api.list_pod_for_all_namespaces()
+            else:
+                return api.list_pod_for_all_namespaces(field_selector = f"spec.nodeName={node}")
+        except ApiException as e:
+            print_api_error(e)
+
+    def get(self, group, version, plural, name, label_selector=None, namespace=None):
+        api = client.CustomObjectsApi(self.api_client)
+        try:
+            if namespace is None:
+                if label_selector == None:
+                    return api.get_cluster_custom_object(
+                        group=group,
+                        version=version,
+                        plural=plural,
+                        name=name,
+                    )
+                else:
+                    return api.get_cluster_custom_object(
+                        group=group,
+                        version=version,
+                        plural=plural,
+                        name=name,
+                        label_selector=label_selector,
+                    )
+
+            else:
+                if label_selector == None:
+                    return api.get_namespaced_custom_object(
+                            group=group,
+                            version=version,
+                            namespace=namespace,
+                            plural=plural,
+                            name=name,
+                    )
+                else:
+                    return api.get_namespaced_custom_object(
+                            group=group,
+                            version=version,
+                            namespace=namespace,
+                            plural=plural,
+                            name=name,
+                            label_selector=label_selector,
+                    )
+        except ApiException as e:
+            if e.status == 404:
                 return None
-        else:
-            try:
-                return api.get_namespaced_custom_object(
-                    group=group,
-                    version=version,
-                    namespace=namespace,
-                    plural=plural,
-                    name=name,
-                )
-            except ApiException:
-                return None
+            else:
+                print_api_error(e)
 
     def create_namespace(self, namespace):
         api = client.CoreV1Api(self.api_client)

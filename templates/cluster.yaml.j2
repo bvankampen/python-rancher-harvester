@@ -3,7 +3,7 @@ kind: Cluster
 metadata:
 {%- if blueprint.cluster.labels is defined %}
   labels:
-    {{ blueprint.cluster.labels | to_yaml | indent(4) }} 
+    {{ blueprint.cluster.labels | to_yaml | indent(4) }}
 {%- else %}
   labels: {}
 {%- endif %}
@@ -47,13 +47,7 @@ spec:
         cloudConfigPath: "{{ blueprint.harvester.cloud_provider_config }}"
 {%- endif %}
     registries:
-{%- if blueprint.registries.configs is defined %}
-        configs:
-          {{ blueprint.registries.configs | to_yaml | indent(10) }}
-{%- else %}
-        configs: {}
-{%- endif %}
-{%- if blueprint.registries.mirrors is defined %}
+{%- if blueprint.registries is defined %}
         mirrors:
           {{ blueprint.registries.mirrors | to_yaml | indent(10) }}
 {%- else %}
@@ -63,7 +57,8 @@ spec:
       cluster-cidr: "{{ blueprint.kubernetes.cluster_cidr | default("10.42.0.0/16") }}"
       service-cidr: "{{ blueprint.kubernetes.service_cidr | default("10.43.0.0/16") }}"
       cni: {{ blueprint.kubernetes.cni  }}
-{%- if blueprint.kubernetes.cis_profile is defined %}     
+      embedded-registry: true
+{%- if blueprint.kubernetes.cis_profile is defined %}
       profile: {{ blueprint.kubernetes.cis_profile }}
 {%- endif %}
 {%- if blueprint.kubernetes.selinux %}
