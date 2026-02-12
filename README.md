@@ -9,7 +9,7 @@
 ## Todo
 
 - [x] Logging and error handling
-- [ ] Configuring of (pass through) NVME disks
+- [x] Configuring of (pass through) NVME disks
 - [ ] Automatic scheduling on VM based on free PCIE resources
 - [ ] Deleting and cleanup of VMs, clusters and resources
 - [ ] Ansible Module

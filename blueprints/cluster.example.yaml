@@ -37,7 +37,10 @@ machines:
       harvester_node: harvester-node
       pcidevices:
         - nvme_storage_1
-        - nvme_storage_2
+      mounts:
+        - disk: /dev/nvme0n1
+          path: /data
+          label: data
     - name: cluster-example-worker-2
       ip: 192.168.0.84
       role: ["worker"]
