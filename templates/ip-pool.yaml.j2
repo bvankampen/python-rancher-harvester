@@ -1,0 +1,18 @@
+apiVersion: loadbalancer.harvesterhci.io/v1beta1
+kind: IPPool
+metadata:
+  labels:
+    loadbalancer.harvesterhci.io/global-ip-pool: "false"
+    loadbalancer.harvesterhci.io/vid: "0"
+  name: {{ name }}
+spec:
+  ranges:
+  - gateway: {{ blueprint.network.gateway }}
+    rangeStart: {{ blueprint.network.ip_pool.start }}
+    rangeEnd: {{ blueprint.network.ip_pool.end }}
+    subnet: {{ cidr }}
+  selector:
+    scope:
+    - guestCluster: {{ blueprint.cluster.name }}
+      namespace: {{ blueprint.cluster.name }}
+      project: '*'

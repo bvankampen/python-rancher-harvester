@@ -63,7 +63,7 @@ runcmd:
 {%- endif %}
 {%- if vm.mounts | default([]) | length > 0 %}
 {%- for mount in vm.mounts %}
-  - mkdir {{ mount.path }}
+  - mkdir -p {{ mount.path }}
 {%- endfor %}
 {%- endif %}
 {%- if vm.mounts | default([]) | length > 0 %}

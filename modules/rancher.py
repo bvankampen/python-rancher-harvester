@@ -1,3 +1,4 @@
+# from kubernetes import client
 from .templates import Template
 from .api import Api
 from .kubernetes import Kubernetes
@@ -56,11 +57,6 @@ class Rancher:
                             if condition["reason"] == "Waiting":
                                 return
             sleep(1)
-
-    def parse_cluster(self, blueprint):
-        logging.info(f"parse cluster {blueprint['cluster']['name']}")
-        template = Template("cluster")
-        return template.parse(blueprint=merge_dict(self.config, blueprint))
 
     def create_cluster(self, blueprint):
         logging.info(f"Create cluster {blueprint['cluster']['name']}")
