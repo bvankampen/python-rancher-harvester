@@ -25,6 +25,8 @@ class Resources:
 
     def get_available_pcidevices(self, node):
         result = []
+        if self.available_pcidevices_all is None:
+            return result
         for device in self.available_pcidevices_all["items"]:
             if device["metadata"]["labels"]["nodename"] == node:
                 for resource_class in self.config["resource_definitions"]:
