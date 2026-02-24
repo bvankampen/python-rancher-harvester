@@ -157,6 +157,7 @@ class Harvester:
             disks = []
             pcidevices = []
             if "pcidevices" in vm:
+            # TODO: Move this code to the resources module, to enable caching
                 pcidevices = self.get_pcidevices(vm["harvester_node"], vm["pcidevices"])
             image_name = self.config["machines"]["template_image_name"]
             if "type" in vm:

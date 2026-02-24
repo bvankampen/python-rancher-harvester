@@ -30,12 +30,20 @@ class Kubernetes:
 
     def list_cluster(self, group, version, plural, label_selector=""):
         api = client.CustomObjectsApi(self.api_client)
-        return api.list_cluster_custom_object(
-            group=group,
-            version=version,
-            plural=plural,
-            label_selector=label_selector,
-        )
+        try:
+            return api.list_cluster_custom_object(
+                group=group,
+                version=version,
+                plural=plural,
+                label_selector=label_selector,
+            )
+        except ApiException as e:
+            if e.status == 404:
+                return None
+            else:
+                print_api_error(e)
+
+
 
 
     def list(self, group, version, plural, label_selector="", namespace=None):
