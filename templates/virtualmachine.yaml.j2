@@ -12,7 +12,8 @@ metadata:
       {{ disks | to_json() }}
     network.harvesterhci.io/ips: '[]'
   labels:
-    harvesterhci.io/creator: harvester
+    guestcluster.harvesterhci.io/name: {{ blueprint.cluster.name }}
+    harvesterhci.io/creator: {{ blueprint.harvester.creator_label | default("harvester") }}
     harvesterhci.io/os: linux
 spec:
   runStrategy: RerunOnFailure
@@ -69,7 +70,7 @@ spec:
 {% endif %}
       evictionStrategy: LiveMigrateIfPossible
       volumes:
-{% for disk in disks %}      
+{% for disk in disks %}
       - name: disk-{{ loop.index-1 }}
         persistentVolumeClaim:
           claimName: "{{ vm.name }}-disk-{{ loop.index-1 }}"
