@@ -98,13 +98,23 @@ class Harvester:
         self.kubernetes.create_service_account(namespace, service_account_name)
         self.kubernetes.create_namespaced_cluster_role_binding(
             namespace=namespace,
-            name=f"{namespace}-{service_account_name}",
+            name=f"{namespace}-{service_account_name}-cloudprovider",
             cluster_role_name="harvesterhci.io:cloudprovider",
             service_account_name=service_account_name,
         )
         service_account = self.kubernetes.get_service_account(
             namespace=namespace, service_account_name=service_account_name
         )
+        self.kubernetes.create_namespaced_cluster_role_binding(
+            namespace=namespace,
+            name=f"{namespace}-{service_account_name}-csi-driver",
+            cluster_role_name="harvesterhci.io:csi-driver",
+            service_account_name=service_account_name,
+        )
+        service_account = self.kubernetes.get_service_account(
+            namespace=namespace, service_account_name=service_account_name
+        )
+
 
         service_account_token_name = f"{service_account_name}-token"
 
@@ -178,6 +188,8 @@ class Harvester:
                 pcidevices=pcidevices,
                 disks=disks,
             )
+
+            logger.debug(vm_manifest)
 
             role = ""
             if "role" in vm:

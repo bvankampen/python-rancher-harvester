@@ -17,28 +17,32 @@ spec:
   kubernetesVersion: {{ blueprint.kubernetes.version }}
   enableNetworkPolicy: true
   rkeConfig:
-{%- if blueprint.kubernetes.ingress_loadbalancer | default(true) %}
-    additionalManifest: |-
-{%- endif %}
-{%- if blueprint.kubernetes.ingress_loadbalancer | default(true) %}
-      apiVersion: helm.cattle.io/v1
-      kind: HelmChartConfig
-      metadata:
-        name: rke2-ingress-nginx
-        namespace: kube-system
-      spec:
-        valuesContent: |-
-          controller:
-            config:
-              proxy-body-size: 128M
-            publishService:
-              enabled: true
-            service:
-              enabled: true
-            annotations:
-              cloudprovider.harvesterhci.io/ipam: pool
-{%- endif %}
     chartValues:
+{%- if blueprint.kubernetes.ingress_loadbalancer | default(true) %}
+{%- if blueprint.kubernetes.ingress | default("traefik") == "ingress-nginx" %}
+      rke2-ingress-nginx:
+        controller:
+          config:
+            proxy-body-size: 128M
+          publishService:
+            enabled: true
+          service:
+            enabled: true
+          annotations:
+            cloudprovider.harvesterhci.io/ipam: pool
+{%- endif %}
+{%- if blueprint.kubernetes.ingress == "traefik" | default("traefik") %}
+      rke2-traefik:
+        providers:
+          kubernetesIngress:
+            publishedService:
+              enabled: true
+        service:
+          type: LoadBalancer
+        annotations:
+          cloudprovider.harvesterhci.io/ipam: pool
+{%- endif %}
+{%- endif %}
 {%- if blueprint.kubernetes.install_harvester_csi | default(false) %}
       harvester-cloud-provider:
         global:
@@ -58,6 +62,11 @@ spec:
       service-cidr: "{{ blueprint.kubernetes.service_cidr | default("10.43.0.0/16") }}"
       cni: {{ blueprint.kubernetes.cni  }}
       embedded-registry: true
+{%- if blueprint.kubernetes.ingress | default("ingress-nginx") == "traefik" %}
+      disable:
+        - rke2-ingress-nginx
+      ingress-controller: traefik
+{% endif %}
 {%- if blueprint.kubernetes.cis_profile is defined %}
       profile: {{ blueprint.kubernetes.cis_profile }}
 {%- endif %}

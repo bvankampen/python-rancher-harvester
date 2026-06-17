@@ -64,7 +64,6 @@ class Rancher:
         template = Template("cluster")
         cluster_manifest = template.parse(blueprint=merge_dict(self.config, blueprint))
         kubernetes = Kubernetes(kubeconfig)
-
         result = kubernetes.create(cluster_manifest, "fleet-default")
         self.wait_for_cluster(blueprint)
         return result
