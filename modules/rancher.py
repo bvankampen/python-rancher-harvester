@@ -31,8 +31,12 @@ class Rancher:
     def get_rke2_node_command(self, cluster_name):
         cluster_id = self.get_cluster_id(cluster_name)
         data = self.api.get(f"/v3/clusters/{cluster_id}/clusterregistrationtokens")
-        logging.debug(f"Node command: {data['data'][0]['nodeCommand']}")
-        return data["data"][0]["nodeCommand"]
+        if self.config["rancher"]["insecure_node_command"]:
+            logging.debug(f"Node command: {data['data'][0]['insecureNodeCommand']}")
+            return data["data"][0]["insecureNodeCommand"]
+        else:
+            logging.debug(f"Node command: {data['data'][0]['nodeCommand']}")
+            return data["data"][0]["nodeCommand"]
 
     def get_cluster(self, cluster_name):
         kubeconfig = self.get_kubeconfig(self.config["rancher"]["cluster_name"])
@@ -64,6 +68,7 @@ class Rancher:
         template = Template("cluster")
         cluster_manifest = template.parse(blueprint=merge_dict(self.config, blueprint))
         kubernetes = Kubernetes(kubeconfig)
+
         result = kubernetes.create(cluster_manifest, "fleet-default")
         self.wait_for_cluster(blueprint)
         return result
