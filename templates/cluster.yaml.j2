@@ -7,7 +7,12 @@ metadata:
 {%- else %}
   labels: {}
 {%- endif %}
+{%- if blueprint.cluster.annotations is defined %}
+  annotations:
+    {{ blueprint.cluster.annotations | to_yaml | indent(4) }}
+{%- else %}
   annotations: {}
+{% endif %}
   name: {{ blueprint.cluster.name }}
   namespace: fleet-default
 spec:
@@ -37,10 +42,13 @@ spec:
           kubernetesIngress:
             publishedService:
               enabled: true
+{%- if blueprint.kubernetes.ingress_loadbalancer | default("false") %}
         service:
-          type: LoadBalancer
+          spec:
+            type: LoadBalancer
         annotations:
           cloudprovider.harvesterhci.io/ipam: pool
+{%- endif %}
 {%- endif %}
 {%- endif %}
 {%- if blueprint.kubernetes.install_harvester_csi | default(false) %}
