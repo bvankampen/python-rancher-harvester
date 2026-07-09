@@ -44,10 +44,10 @@ spec:
               enabled: true
 {%- if blueprint.kubernetes.ingress_loadbalancer | default("false") %}
         service:
+          annotations:
+            cloudprovider.harvesterhci.io/ipam: pool
           spec:
             type: LoadBalancer
-            annotations:
-              cloudprovider.harvesterhci.io/ipam: pool
 {%- endif %}
 {%- endif %}
 {%- endif %}
