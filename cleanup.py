@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+
+from modules.utils import load_blueprint, load_config
+from modules.rancher import Rancher
+from modules.harvester import Harvester
+
+import argparse
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def cleanup(config, blueprint, args):
+    harvester = Harvester(config, blueprint)
+    harvester.deprovision(args)
+
+    if not args.nocleanupcluster:
+        if "cluster" in blueprint:
+            rancher = Rancher(config)
+            rancher.delete_cluster(blueprint)
+            if not args.nowait:
+                rancher.wait_for_cluster_deletion(blueprint)
+
+
+def set_logging(config, log_level, log_filename):
+    if log_level == "":
+        if "logging" in config:
+            if "level" in config["logging"]:
+                log_level = config["logging"]["level"]
+            else:
+                log_level = "error"
+        else:
+            log_level = "error"
+    if log_filename == "":
+        if "logging" in config:
+            if "filename" in config["logging"]:
+                log_filename = config["logging"]["filename"]
+            else:
+                log_filename = ""
+        else:
+            log_filename = ""
+
+    logging.basicConfig(
+        filename=log_filename,
+        level=int(getattr(logging, log_level.upper())),
+        format="%(levelname)s - %(message)s",
+    )
+
+    logger.info(f"Loglevel set to {log_level.upper()}")
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Cleanup Virtual Machines and Clusters on Harvester",
+        add_help=True,
+    )
+
+    parser.add_argument("blueprint", help="name of the blueprint")
+    parser.add_argument(
+        "--vms",
+        help="VM names (comma separated) in case you only want to cleanup specific vms, if empty all vms are cleaned up",
+        default="",
+    )
+    parser.add_argument(
+        "--nocleanupcluster", help="don't cleanup rancher cluster", action="store_true"
+    )
+    parser.add_argument(
+        "--nowait", help="don't wait for rancher cluster deletion to finish", action="store_true"
+    )
+    parser.add_argument("--loglevel", help="loglevel", default="")
+    parser.add_argument("--logfile", help="logfile name", default="")
+
+    args = parser.parse_args()
+
+    config = load_config("./config")
+    blueprint = load_blueprint(args.blueprint)
+
+    set_logging(config, args.loglevel, args.logfile)
+
+    if blueprint is not None:
+        cleanup(config, blueprint, args)
+
+
+if __name__ == "__main__":
+    main()

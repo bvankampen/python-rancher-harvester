@@ -141,6 +141,78 @@ class Kubernetes:
             else:
                 print_api_error(e)
 
+    def delete(self, group, version, plural, name, namespace=None):
+        api = client.CustomObjectsApi(self.api_client)
+        try:
+            if namespace is None:
+                return api.delete_cluster_custom_object(
+                    group=group,
+                    version=version,
+                    plural=plural,
+                    name=name,
+                )
+            else:
+                return api.delete_namespaced_custom_object(
+                    group=group,
+                    version=version,
+                    namespace=namespace,
+                    plural=plural,
+                    name=name,
+                )
+        except ApiException as e:
+            if e.status == 404:
+                return None
+            else:
+                print_api_error(e)
+
+    def delete_namespace(self, name):
+        api = client.CoreV1Api(self.api_client)
+        try:
+            api.delete_namespace(name=name)
+        except ApiException as e:
+            if e.status != 404:
+                print_api_error(e)
+
+    def delete_secret(self, namespace, name):
+        api = client.CoreV1Api(self.api_client)
+        try:
+            api.delete_namespaced_secret(name=name, namespace=namespace)
+        except ApiException as e:
+            if e.status != 404:
+                print_api_error(e)
+
+    def delete_service_account(self, namespace, name):
+        api = client.CoreV1Api(self.api_client)
+        try:
+            api.delete_namespaced_service_account(name=name, namespace=namespace)
+        except ApiException as e:
+            if e.status != 404:
+                print_api_error(e)
+
+    def delete_role_binding(self, namespace, name):
+        api = client.RbacAuthorizationV1Api(self.api_client)
+        try:
+            api.delete_namespaced_role_binding(name=name, namespace=namespace)
+        except ApiException as e:
+            if e.status != 404:
+                print_api_error(e)
+
+    def delete_cluster_role_binding(self, name):
+        api = client.RbacAuthorizationV1Api(self.api_client)
+        try:
+            api.delete_cluster_role_binding(name=name)
+        except ApiException as e:
+            if e.status != 404:
+                print_api_error(e)
+
+    def delete_persistent_volume_claim(self, namespace, name):
+        api = client.CoreV1Api(self.api_client)
+        try:
+            api.delete_namespaced_persistent_volume_claim(name=name, namespace=namespace)
+        except ApiException as e:
+            if e.status != 404:
+                print_api_error(e)
+
     def create_namespace(self, namespace):
         api = client.CoreV1Api(self.api_client)
         try:
@@ -168,6 +240,31 @@ class Kubernetes:
             api.create_namespaced_role_binding(
                 namespace=namespace,
                 body=client.V1RoleBinding(
+                    metadata=client.V1ObjectMeta(name=name),
+                    role_ref=client.V1RoleRef(
+                        api_group="rbac.authorization.k8s.io",
+                        kind="ClusterRole",
+                        name=cluster_role_name,
+                    ),
+                    subjects=[
+                        client.RbacV1Subject(
+                            kind="ServiceAccount",
+                            name=service_account_name,
+                            namespace=namespace,
+                        )
+                    ],
+                ),
+            )
+        except ApiException as e:
+            print_api_error(e)
+
+    def create_cluster_role_binding(
+        self, name, cluster_role_name, service_account_name, namespace
+    ):
+        api = client.RbacAuthorizationV1Api(self.api_client)
+        try:
+            api.create_cluster_role_binding(
+                body=client.V1ClusterRoleBinding(
                     metadata=client.V1ObjectMeta(name=name),
                     role_ref=client.V1RoleRef(
                         api_group="rbac.authorization.k8s.io",
