@@ -13,6 +13,6 @@ spec:
     subnet: {{ cidr }}
   selector:
     scope:
-    - guestCluster: {{ blueprint.cluster.name }}
+    - guestCluster: '*'
       namespace: {{ blueprint.cluster.name }}
       project: '*'
