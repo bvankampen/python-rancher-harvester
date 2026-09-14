@@ -105,11 +105,11 @@ class Harvester:
         service_account = self.kubernetes.get_service_account(
             namespace=namespace, service_account_name=service_account_name
         )
-        self.kubernetes.create_namespaced_cluster_role_binding(
-            namespace=namespace,
+        self.kubernetes.create_cluster_role_binding(
             name=f"{namespace}-{service_account_name}-csi-driver",
             cluster_role_name="harvesterhci.io:csi-driver",
             service_account_name=service_account_name,
+            namespace=namespace,
         )
         service_account = self.kubernetes.get_service_account(
             namespace=namespace, service_account_name=service_account_name
@@ -312,3 +312,103 @@ class Harvester:
         self.create_vm_network()
         self.create_ip_pool()
         self.create_vms(args.updatevm, args.vms)
+
+    def delete_csi_cloudconfig(self):
+        service_account_name = self.config["cluster"]["name"]
+        namespace = self.config["machines"]["namespace"]
+
+        logging.info(f"Delete CSI Cloudconfig for {service_account_name}")
+
+        self.kubernetes.delete_cluster_role_binding(
+            name=f"{namespace}-{service_account_name}-csi-driver"
+        )
+        self.kubernetes.delete_role_binding(
+            namespace=namespace,
+            name=f"{namespace}-{service_account_name}-cloudprovider"
+        )
+        self.kubernetes.delete_secret(
+            namespace=namespace,
+            name=f"{service_account_name}-token"
+        )
+        self.kubernetes.delete_service_account(
+            namespace=namespace,
+            name=service_account_name
+        )
+
+    def delete_vms(self, vms_arg=""):
+        if vms_arg != "":
+            vms_to_delete = vms_arg.split(",")
+        else:
+            vms_to_delete = [vm["name"] for vm in self.config["machines"]["vms"]]
+
+        for vm in self.config["machines"]["vms"]:
+            if vm["name"] not in vms_to_delete:
+                continue
+
+            logger.info(f"Delete VM {vm['name']}")
+            
+            self.kubernetes.delete(
+                "kubevirt.io",
+                "v1",
+                "virtualmachines",
+                vm["name"],
+                namespace=self.config["machines"]["namespace"]
+            )
+
+            logger.info(f"Delete cloudinit secret for {vm['name']}")
+            self.kubernetes.delete_secret(
+                namespace=self.config["machines"]["namespace"],
+                name=vm["name"]
+            )
+
+            logger.info(f"Delete OS disk PVC for {vm['name']}")
+            self.kubernetes.delete_persistent_volume_claim(
+                namespace=self.config["machines"]["namespace"],
+                name=f"{vm['name']}-disk-0"
+            )
+
+            if "extra_disks" in vm:
+                count = 1
+                for disk in vm["extra_disks"]:
+                    logger.info(f"Delete extra disk PVC {vm['name']}-disk-{count}")
+                    self.kubernetes.delete_persistent_volume_claim(
+                        namespace=self.config["machines"]["namespace"],
+                        name=f"{vm['name']}-disk-{count}"
+                    )
+                    count += 1
+
+        if "kubernetes" in self.config and "install_harvester_csi" in self.config["kubernetes"]:
+            if self.config["kubernetes"]["install_harvester_csi"] and vms_arg == "":
+                self.delete_csi_cloudconfig()
+
+    def delete_vm_network(self):
+        if "vlan_id" not in self.config["network"]:
+            return
+        namespace = self.config["network"]["name"].split("/")[0]
+        name = self.config["network"]["name"].split("/")[1]
+        
+        logger.info(f"Delete network {name} in namespace {namespace}")
+        self.kubernetes.delete(
+            "k8s.cni.cncf.io",
+            "v1",
+            "network-attachment-definitions",
+            name,
+            namespace=namespace
+        )
+
+    def delete_ip_pool(self):
+        if "ip_pool" not in self.config["network"]:
+            return
+        name = f"{self.config['cluster']['name']}-ip-pool"
+        logger.info(f"Delete IP Pool {name}")
+        self.kubernetes.delete(
+            "loadbalancer.harvesterhci.io",
+            "v1beta1",
+            "ippools",
+            name
+        )
+
+    def deprovision(self, args):
+        self.delete_vms(args.vms)
+        self.delete_ip_pool()
+        self.delete_vm_network()

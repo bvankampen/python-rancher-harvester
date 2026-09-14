@@ -72,3 +72,30 @@ class Rancher:
         result = kubernetes.create(cluster_manifest, "fleet-default")
         self.wait_for_cluster(blueprint)
         return result
+
+    def delete_cluster(self, blueprint):
+        logging.info(f"Delete cluster {blueprint['cluster']['name']}")
+        kubeconfig = self.get_kubeconfig(self.config["rancher"]["cluster_name"])
+        kubernetes = Kubernetes(kubeconfig)
+
+        result = kubernetes.delete(
+            group="provisioning.cattle.io",
+            version="v1",
+            plural="clusters",
+            name=blueprint["cluster"]["name"],
+            namespace="fleet-default",
+        )
+        return result
+
+    def wait_for_cluster_deletion(self, blueprint, timeout=600):
+        logging.info(f"Waiting for cluster {blueprint['cluster']['name']} to be deleted...")
+        elapsed = 0
+        while elapsed < timeout:
+            cluster = self.get_cluster(blueprint["cluster"]["name"])
+            if cluster is None:
+                logging.info(f"Cluster {blueprint['cluster']['name']} has been deleted.")
+                return True
+            sleep(5)
+            elapsed += 5
+        logging.warning(f"Timeout waiting for cluster {blueprint['cluster']['name']} to be deleted.")
+        return False

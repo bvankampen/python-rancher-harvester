@@ -51,12 +51,9 @@ spec:
 {%- endif %}
 {%- endif %}
 {%- endif %}
-{%- if blueprint.kubernetes.install_harvester_csi | default(false) %}
+{%- if blueprint.kubernetes.install_harvester_csi | default(false) and blueprint.harvester.cloud_provider_values is defined %}
       harvester-cloud-provider:
-        global:
-          cattle:
-            clusterName: "{{ blueprint.cluster.name }}"
-        cloudConfigPath: "{{ blueprint.harvester.cloud_provider_config }}"
+        {{ blueprint.harvester.cloud_provider_values | to_yaml | indent(8) }}
 {%- endif %}
     registries:
 {%- if blueprint.registries is defined %}
