@@ -38,6 +38,12 @@ write_files:
         alias k=kubectl
         complete -o default -F __start_kubectl k
       fi
+  - owner: root:root
+    path: /etc/sysctl.d/90-rancher-inotify.conf
+    permissions: '0644'
+    content: |
+      fs.inotify.max_user_instances=8192
+      fs.inotify.max_user_watches=524288
 {%- if vm.mounts | default([]) | length > 0 %}
 disk_setup:
 {%- for mount in vm.mounts %}
@@ -55,6 +61,7 @@ fs_setup:
 {%- endif %}
 runcmd:
   - echo "Run Commands"
+  - sysctl --system
 {%- if blueprint.kubernetes.rke2_provisioned_install | default(false) %}
   - /root/rke2_install.sh
 {%- endif %}
